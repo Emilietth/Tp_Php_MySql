@@ -2,7 +2,7 @@
 
 -- Ajout de la colonne nb_commentaires dans la table Article pour stocker le nombre de commentaires de chaque article
 ALTER TABLE Article
-ADD COLUMN nb_commentaires INT NOT NULL;
+ADD COLUMN nb_commentaires INT NOT NULL DEFAULT 0;
 
 -- Mise à jour de la colonne nb_commentaires au nombre de commentaires présents pour chaque article
 UPDATE Article a 
@@ -12,10 +12,19 @@ SET nb_commentaires = (SELECT COUNT(*) FROM Commentaire WHERE article_id = a.id)
 DELIMITER |
 CREATE TRIGGER after_insert_commentaire AFTER INSERT
 ON Commentaire FOR EACH ROW
+UPDATE Article SET nb_commentaires = nb_commentaires + 1 WHERE id = NEW.article_id|
+
+CREATE TRIGGER after_delete_commentaire AFTER DELETE
+ON Commentaire FOR EACH ROW
+UPDATE Article SET nb_commentaires = nb_commentaires - 1 WHERE id = OLD.article_id|
+
+CREATE TRIGGER after_update_commentaire AFTER UPDATE
+ON Commentaire FOR EACH ROW
 BEGIN
-	UPDATE Article
-	SET nb_commentaires = nb_commentaires + 1
-	WHERE id = NEW.article_id;
+	IF NEW.article_id <> OLD.article_id THEN
+		UPDATE Article SET nb_commentaires = nb_commentaires - 1 WHERE id = OLD.article_id;
+		UPDATE Article SET nb_commentaires = nb_commentaires + 1 WHERE id = NEW.article_id;
+	END IF;
 END |
 DELIMITER ;
 
