@@ -45,55 +45,28 @@ DELIMITER ;
 -- 3)Enfin, les administrateurs du site veulent connaître quelques statistiques sur les utilisateurs enregistrés : le nombre d’articles écrits, la date du dernier article, le nombre de commentaires écrits et la date du dernier commentaire. Ces informations doivent être stockées pour ne pas devoir les recalculer chaque fois. Par contre, elles ne doivent pas nécessairement être à jour à tout moment. On doit disposer d’un outil pour faire les mises à jour à la demande.
 
 -- Création de la vue matérialisée
-CREATE TABLE VM_stat_utilisateurs (   
-	id INT UNSIGNED,
-	pseudo VARCHAR(100) NOT NULL,
-	nb_articles INT UNSIGNED NOT NULL,
-	date_dernier_article DATETIME,
-	nb_commentaires INT UNSIGNED NOT NULL,
-	date_dernier_commentaire DATETIME,
-	PRIMARY KEY(id)
-);
+CREATE TABLE VM_stat_utilisateurs
+SELECT u.id, u.pseudo, COUNT(DISTINCT a.id) AS nb_articles, MAX(a.date_publication) AS dernier_article, COUNT(DISTINCT c.id) AS nb_commentaires, MAX(c.date_commentaire) AS dernier_commentaire
+FROM Utilisateur AS u
+LEFT JOIN Article AS a ON a.auteur_id = u.id
+LEFT JOIN Commentaire AS c ON c.auteur_id = u.id
+GROUP BY u.id, u.pseudo;
 
 -- Création de la procédure stockée pour mettre à jour la vue matérialisée VM_stat_utilisateurs
 DELIMITER |
 CREATE PROCEDURE maj_vm_stat_utilisateurs()  
 BEGIN
-    DECLARE v_id INT;
-	
-	DECLARE fin BOOLEAN DEFAULT FALSE; 
+    TRUNCATE VM_stat_utilisateurs;
 
-    DECLARE curs_utilisateurs CURSOR
-        FOR SELECT id FROM VM_stat_utilisateurs
-        ORDER BY id;
-
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET fin = TRUE;
-	
-	TRUNCATE TABLE VM_stat_utilisateurs; -- Vider la vue matérialisée
-	
-	INSERT INTO VM_stat_utilisateurs  -- Remplir la vue matérialisée
-	SELECT u.id, u.pseudo, COUNT( DISTINCT a.id ), MAX( a.date_publication ), 0, NULL
-	FROM Utilisateur u
-	LEFT JOIN Article a ON u.id = a.auteur_id
+    INSERT INTO VM_stat_utilisateurs
+    SELECT u.id, u.pseudo, COUNT(DISTINCT a.id) AS nb_articles, MAX(a.date_publication) AS dernier_article, COUNT(DISTINCT c.id) AS nb_commentaires, MAX(c.date_commentaire) AS dernier_commentaire
+	FROM Utilisateur AS u
+	LEFT JOIN Article AS a ON a.auteur_id = u.id
+	LEFT JOIN Commentaire AS c ON c.auteur_id = u.id
 	GROUP BY u.id, u.pseudo;
-	
-    OPEN curs_utilisateurs;  -- Ouverture du curseur
-	
-	WHILE NOT Fin DO
-		FETCH curs_utilisateurs INTO v_id;  
-		
-		-- Pour chaque utilisateur enregistré, mettre à jour nb_commentaires et date_dernier_commentaire
-		UPDATE VM_stat_utilisateurs  
-		SET nb_commentaires = (SELECT COUNT(*) FROM Commentaire WHERE auteur_id = v_id),
-			date_dernier_commentaire = (SELECT MAX(date_commentaire) FROM Commentaire WHERE auteur_id = v_id)		
-		WHERE id = v_id;
-	END WHILE;
-
-    CLOSE curs_utilisateurs;     -- Fermeture du curseur
-END|
+END |
 DELIMITER ;
 
-CALL maj_vm_stat_utilisateurs();
 
 
 
