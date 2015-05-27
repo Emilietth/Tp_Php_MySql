@@ -7,13 +7,13 @@
 
     <body>
 		<?php
-			if (!isset($_POST['mot_de_passe']) OR $_POST['mot_de_passe'] != "kangourou")
+			if (!isset($_POST['mot_de_passe']) OR htmlspecialchars($_POST['mot_de_passe']) != "kangourou")
 			{
 				if (!isset($_POST['mot_de_passe']))
 				{
 					echo "<p>Veuillez entrer le mot de passe pour obtenir les codes d'accès au serveur central de la NASA :</p>";
 				}		
-				elseif ($_POST['mot_de_passe'] != "kangourou")
+				elseif (htmlspecialchars($_POST['mot_de_passe']) != "kangourou")
 				{
 					echo "<p>Mot de passe incorrect ! Veuillez entrer de nouveau le mot de passe :</p>";				
 				}
